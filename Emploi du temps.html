@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emploi du temps — Mon Bureau Numérique</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        };
+    </script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        /* Quadrillage horizontal fin façon Mon Bureau Numérique (72px = 1h, 36px = 30min) */
+        .schedule-grid-lines {
+            background-image:
+                linear-gradient(to bottom, rgba(148, 163, 184, 0.22) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(148, 163, 184, 0.10) 1px, transparent 1px);
+            background-size: 100% 72px, 100% 36px;
+        }
+        .dark .schedule-grid-lines {
+            background-image:
+                linear-gradient(to bottom, rgba(71, 85, 105, 0.42) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(51, 65, 85, 0.28) 1px, transparent 1px);
+            background-size: 100% 72px, 100% 36px;
+        }
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.65);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 dark:bg-[#0b1120] text-slate-900 dark:text-slate-100 min-h-screen flex flex-col lg:flex-row transition-colors duration-200">
+
+    <!-- BARRE LATÉRALE DE NAVIGATION -->
+    <aside class="w-full lg:w-64 bg-white dark:bg-[#0f172a] border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-800/90 flex flex-col shrink-0 z-20">
+        <!-- Logo / En-tête ENT -->
+        <div class="p-4 lg:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
+                    <i class="fa-solid fa-graduation-cap text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-tight">Mon Bureau Numérique</h1>
+                    <span class="text-[11px] font-medium text-sky-600 dark:text-sky-400">Espace Établissement</span>
+                </div>
+            </div>
+            <button id="themeToggleBtn" title="Changer de thème" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-amber-500 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition">
+                <i id="themeIcon" class="fa-solid fa-sun"></i>
+            </button>
+        </div>
+
+        <!-- Menu de navigation -->
+        <nav class="p-2.5 lg:p-3 flex lg:flex-col gap-1.5 overflow-x-auto">
+            <button onclick="switchView('timetable')" id="nav-timetable" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition whitespace-nowrap bg-blue-600 text-white shadow-sm">
+                <i class="fa-solid fa-calendar-days w-4 text-center"></i>
+                <span>Emploi du temps</span>
+            </button>
+
+            <button onclick="switchView('homework')" id="nav-homework" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
+                <i class="fa-solid fa-book-open w-4 text-center text-sky-500"></i>
+                <span>Agenda / Devoirs</span>
+                <span id="badge-homework" class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400">0</span>
+            </button>
+
+            <button onclick="switchView('absences')" id="nav-absences" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
+                <i class="fa-solid fa-user-slash w-4 text-center text-rose-500"></i>
+                <span>Motifs d'absences Profs</span>
+                <span id="badge-absences" class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400">0</span>
+            </button>
+
+            <button onclick="switchView('viescolaire')" id="nav-viescolaire" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
+                <i class="fa-solid fa-shield-halved w-4 text-center text-amber-500"></i>
+                <span>Vie Scolaire</span>
+                <span id="badge-viescolaire" class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">0</span>
+            </button>
+
+            <button onclick="switchView('grades')" id="nav-grades" class="nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70">
+                <i class="fa-solid fa-award w-4 text-center text-emerald-500"></i>
+                <span>Note</span>
+                <span id="badge-grades" class="ml-auto text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">0</span>
+            </button>
+        </nav>
+
+        <!-- Pied de barre latérale -->
+        <div class="hidden lg:block mt-auto p-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+            <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium mb-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Sauvegarde locale active
+            </div>
+            <p class="text-[11px] leading-relaxed">Toutes vos modifications sont conservées dans votre navigateur.</p>
+        </div>
+    </aside>
+
+    <!-- CONTENU PRINCIPAL -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        <!-- ========================================================= -->
+        <!-- VUE 1 : EMPLOI DU TEMPS                                   -->
+        <!-- ========================================================= -->
+        <section id="view-timetable" class="flex-1 flex flex-col p-4 lg:p-6 overflow-y-auto">
+            <!-- Barre d'outils -->
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <label for="classSelect" class="text-sm font-semibold text-slate-700 dark:text-slate-200">Classe</label>
+                    <select id="classSelect" class="bg-white dark:bg-[#162033] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-semibold rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="6e A">6e A</option>
+                        <option value="5e B">5e B</option>
+                        <option value="4e C">4e C</option>
+                        <option value="3e D">3e D</option>
+                        <option value="Seconde">Seconde</option>
+                        <option value="Première">Première</option>
+                        <option value="Terminale">Terminale</option>
+                    </select>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
+                        Cliquez sur un cours pour le modifier, cliquez sur une case vide pour ajouter, ou glissez-déposez.
+                    </span>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button id="openSavedTimetablesBtn" class="px-3.5 py-2 rounded-xl bg-white dark:bg-[#1e293b] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-sm font-medium flex items-center gap-2 transition">
+                        <i class="fa-solid fa-folder-open text-amber-500"></i>
+                        <span>Mes sauvegardes</span>
+                        <span id="savedTimetablesCount" class="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">0</span>
+                    </button>
+                    <button id="openSaveTimetableModalBtn" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Sauvegarder l'emploi du temps</span>
+                    </button>
+                    <button id="clearAllBtn" class="px-3.5 py-2 rounded-xl bg-white dark:bg-[#1e293b] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-300 dark:border-slate-700 text-sm font-medium flex items-center gap-2 transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Tout effacer</span>
+                    </button>
+                    <button id="openCreateModalBtn" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-md shadow-blue-600/20 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Créer un cours</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grille horaire -->
+            <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-lg overflow-x-auto flex-1">
+                <div class="min-w-[780px]">
+                    <!-- En-tête des jours -->
+                    <div class="grid grid-cols-[64px_repeat(5,1fr)] bg-slate-100 dark:bg-[#1e3a6e] text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-700/80 rounded-t-2xl">
+                        <div class="p-3 flex items-center justify-center text-slate-500 dark:text-blue-200 border-r border-slate-200 dark:border-blue-800/60">
+                            <i class="fa-regular fa-clock"></i>
+                        </div>
+                        <div class="p-3 text-center font-bold text-sm border-r border-slate-200 dark:border-blue-800/60">Lundi</div>
+                        <div class="p-3 text-center font-bold text-sm border-r border-slate-200 dark:border-blue-800/60">Mardi</div>
+                        <div class="p-3 text-center font-bold text-sm border-r border-slate-200 dark:border-blue-800/60">Mercredi</div>
+                        <div class="p-3 text-center font-bold text-sm border-r border-slate-200 dark:border-blue-800/60">Jeudi</div>
+                        <div class="p-3 text-center font-bold text-sm">Vendredi</div>
+                    </div>
+
+                    <!-- Corps de la grille (8h à 18h = 10 heures * 72px = 720px) -->
+                    <div class="grid grid-cols-[64px_repeat(5,1fr)] relative" style="height: 720px;">
+                        <!-- Colonne des heures -->
+                        <div id="timeLabelsCol" class="relative bg-slate-50 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 select-none"></div>
+
+                        <!-- Colonnes des 5 jours -->
+                        <div id="dayCol-0" data-day="0" class="day-column relative border-r border-slate-200 dark:border-slate-800/80 schedule-grid-lines cursor-pointer"></div>
+                        <div id="dayCol-1" data-day="1" class="day-column relative border-r border-slate-200 dark:border-slate-800/80 schedule-grid-lines cursor-pointer"></div>
+                        <div id="dayCol-2" data-day="2" class="day-column relative border-r border-slate-200 dark:border-slate-800/80 schedule-grid-lines cursor-pointer"></div>
+                        <div id="dayCol-3" data-day="3" class="day-column relative border-r border-slate-200 dark:border-slate-800/80 schedule-grid-lines cursor-pointer"></div>
+                        <div id="dayCol-4" data-day="4" class="day-column relative schedule-grid-lines cursor-pointer"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- VUE 2 : AGENDA / DEVOIRS À FAIRE                          -->
+        <!-- ========================================================= -->
+        <section id="view-homework" class="hidden flex-1 flex flex-col p-4 lg:p-6 overflow-y-auto">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Cahier de textes — Devoirs à faire</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Planifiez et cochez vos devoirs, leçons et évaluations par matière.</p>
+                </div>
+                <button id="openHomeworkModalBtn" class="px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold shadow-md shadow-sky-600/20 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Ajouter un devoir</span>
+                </button>
+            </div>
+
+            <!-- Filtres devoirs -->
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <button onclick="setHomeworkFilter('all')" id="hw-filter-all" class="hw-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-sky-600 text-white">Tous</button>
+                <button onclick="setHomeworkFilter('todo')" id="hw-filter-todo" class="hw-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">À faire</button>
+                <button onclick="setHomeworkFilter('done')" id="hw-filter-done" class="hw-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">Terminés</button>
+            </div>
+
+            <div id="homeworkList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- VUE 3 : MOTIFS D'ABSENCES PROFESSEURS                     -->
+        <!-- ========================================================= -->
+        <section id="view-absences" class="hidden flex-1 flex flex-col p-4 lg:p-6 overflow-y-auto">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Motifs d'absences Professeurs</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Suivi des absences enseignants, motifs administratifs et remplacements.</p>
+                </div>
+                <button id="openAbsenceModalBtn" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-600/20 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Déclarer une absence</span>
+                </button>
+            </div>
+
+            <div id="absencesList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- VUE 4 : VIE SCOLAIRE (OBSERVATIONS & PUNITIONS)           -->
+        <!-- ========================================================= -->
+        <section id="view-viescolaire" class="hidden flex-1 flex flex-col p-4 lg:p-6 overflow-y-auto">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Vie Scolaire — Observations & Punitions</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Suivi disciplinaire : bavardages, oublis d'affaires, travail non fait, retenues et convocations.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button id="openObsModalBtn" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold shadow-md shadow-amber-600/20 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-eye"></i>
+                        <span>Ajouter une Observation</span>
+                    </button>
+                    <button id="openPunishModalBtn" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold shadow-md shadow-rose-600/20 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-gavel"></i>
+                        <span>Ajouter une Punition</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Colonne Observations -->
+                <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-base flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                            Observations (<span id="obsCountLabel">0</span>)
+                        </h3>
+                    </div>
+                    <div id="observationsList" class="space-y-3"></div>
+                </div>
+
+                <!-- Colonne Punitions -->
+                <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-base flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                            <i class="fa-solid fa-gavel"></i>
+                            Punitions (<span id="punishCountLabel">0</span>)
+                        </h3>
+                    </div>
+                    <div id="punishmentsList" class="space-y-3"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================= -->
+        <!-- VUE 5 : NOTE (ÉVALUATIONS /10 OU /20)                    -->
+        <!-- ========================================================= -->
+        <section id="view-grades" class="hidden flex-1 flex flex-col p-4 lg:p-6 overflow-y-auto">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white">Relevé de Notes</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Saisissez les évaluations (/10 ou /20), les élèves et les appréciations.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="px-4 py-2 rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-sm">
+                        <span class="text-slate-500 dark:text-slate-400">Moyenne :</span>
+                        <span id="gradesAverageLabel" class="font-extrabold text-emerald-600 dark:text-emerald-400 ml-1">— / 20</span>
+                    </div>
+                    <button id="openGradeModalBtn" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Ajouter une note</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="gradesList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+        </section>
+
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 1 : CRÉER UN COURS                                 -->
+    <!-- ========================================================= -->
+    <div id="createModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-plus text-blue-500"></i>
+                    Créer un cours
+                </h3>
+                <button type="button" onclick="closeModal('createModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="createCourseForm" class="p-5 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nom de la matière *</label>
+                        <input type="text" id="createSubject" required placeholder="Ex: Mathématiques, EPS..." class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Professeur</label>
+                        <input type="text" id="createTeacher" placeholder="Ex: Mme Martin" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Bâtiment / Lieu</label>
+                        <select id="createBuilding" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="A">Bâtiment A</option>
+                            <option value="B">Bâtiment B</option>
+                            <option value="C">Bâtiment C</option>
+                            <option value="AUTRE">Autre lieu (Gymnase, Labo...)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Numéro de salle / Lieu</label>
+                        <input type="text" id="createRoomNumber" placeholder="Ex: 102 ou GYMNASE" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Jour</label>
+                        <select id="createDay" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="0">Lundi</option>
+                            <option value="1">Mardi</option>
+                            <option value="2">Mercredi</option>
+                            <option value="3">Jeudi</option>
+                            <option value="4">Vendredi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">De</label>
+                        <select id="createStart" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">À</label>
+                        <select id="createEnd" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Couleur du cours</label>
+                    <select id="createColor" onchange="toggleCustomColor('create')" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="cyan">Bleu Cyan (Défaut MBN)</option>
+                        <option value="blue">Bleu Roi</option>
+                        <option value="emerald">Vert Émeraude</option>
+                        <option value="amber">Orange / Ambre</option>
+                        <option value="purple">Violet</option>
+                        <option value="rose">Rose / Framboise</option>
+                        <option value="custom">Couleur personnalisée (Palette)...</option>
+                    </select>
+                    <div id="createCustomColorWrapper" class="hidden mt-2.5 flex items-center gap-3 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                        <input type="color" id="createCustomColor" value="#06b6d4" oninput="syncHexLabel('create')" class="w-10 h-9 rounded-lg cursor-pointer border-0 bg-transparent">
+                        <span id="createCustomHex" class="text-xs font-mono font-bold uppercase text-slate-700 dark:text-slate-200">#06B6D4</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 ml-auto">Palette libre</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2.5 pt-2">
+                    <button type="button" onclick="closeModal('createModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-md">Ajouter à l'emploi du temps</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 2 : MODIFIER UN COURS (STATUTS VIE SCOLAIRE)       -->
+    <!-- ========================================================= -->
+    <div id="editModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-sky-500"></i>
+                    Modifier le cours
+                </h3>
+                <button type="button" onclick="closeModal('editModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <form id="editCourseForm" class="p-5 space-y-4">
+                <input type="hidden" id="editCourseId">
+
+                <!-- Statut vie scolaire -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Statut du cours</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="editStatus" value="normal" class="peer sr-only" checked>
+                            <div class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-center peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition">Normal</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="editStatus" value="maintenu" class="peer sr-only">
+                            <div class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-center peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition">Cours Maintenu</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="editStatus" value="exceptionnel" class="peer sr-only">
+                            <div class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-center peer-checked:bg-amber-500 peer-checked:text-slate-950 peer-checked:border-amber-500 transition">Exceptionnel</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="editStatus" value="remplacement" class="peer sr-only">
+                            <div class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-center peer-checked:bg-purple-600 peer-checked:text-white peer-checked:border-purple-600 transition">Remplacement</div>
+                        </label>
+                        <label class="cursor-pointer col-span-2 sm:col-span-2">
+                            <input type="radio" name="editStatus" value="annule" class="peer sr-only">
+                            <div class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-center peer-checked:bg-rose-600 peer-checked:text-white peer-checked:border-rose-600 transition">Annulé</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Professeur remplaçant (affiché si Remplacement) -->
+                <div id="replacementTeacherWrapper" class="hidden">
+                    <label class="block text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">Nom du professeur remplaçant</label>
+                    <input type="text" id="editReplacementTeacher" placeholder="Ex: M. Bernard" class="w-full rounded-xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-300 dark:border-purple-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nom de la matière *</label>
+                        <input type="text" id="editSubject" required class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Professeur</label>
+                        <input type="text" id="editTeacher" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Bâtiment / Lieu</label>
+                        <select id="editBuilding" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="A">Bâtiment A</option>
+                            <option value="B">Bâtiment B</option>
+                            <option value="C">Bâtiment C</option>
+                            <option value="AUTRE">Autre lieu</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Numéro de salle / Lieu</label>
+                        <input type="text" id="editRoomNumber" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Jour</label>
+                        <select id="editDay" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="0">Lundi</option>
+                            <option value="1">Mardi</option>
+                            <option value="2">Mercredi</option>
+                            <option value="3">Jeudi</option>
+                            <option value="4">Vendredi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">De</label>
+                        <select id="editStart" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">À</label>
+                        <select id="editEnd" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Couleur du cours</label>
+                    <select id="editColor" onchange="toggleCustomColor('edit')" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="cyan">Bleu Cyan (Défaut MBN)</option>
+                        <option value="blue">Bleu Roi</option>
+                        <option value="emerald">Vert Émeraude</option>
+                        <option value="amber">Orange / Ambre</option>
+                        <option value="purple">Violet</option>
+                        <option value="rose">Rose / Framboise</option>
+                        <option value="custom">Couleur personnalisée (Palette)...</option>
+                    </select>
+                    <div id="editCustomColorWrapper" class="hidden mt-2.5 flex items-center gap-3 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                        <input type="color" id="editCustomColor" value="#06b6d4" oninput="syncHexLabel('edit')" class="w-10 h-9 rounded-lg cursor-pointer border-0 bg-transparent">
+                        <span id="editCustomHex" class="text-xs font-mono font-bold uppercase text-slate-700 dark:text-slate-200">#06B6D4</span>
+                        <span class="text-xs text-slate-500 dark:text-slate-400 ml-auto">Palette libre</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <button type="button" id="deleteCourseBtn" class="px-3.5 py-2 rounded-xl bg-rose-600/15 hover:bg-rose-600 text-rose-600 hover:text-white text-sm font-semibold flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Supprimer</span>
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeModal('editModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium">Annuler</button>
+                        <button type="submit" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow-md">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 3 : AJOUTER UN DEVOIR                              -->
+    <!-- ========================================================= -->
+    <div id="homeworkModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Ajouter un devoir à faire</h3>
+                <button type="button" onclick="closeModal('homeworkModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="homeworkForm" class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Matière *</label>
+                        <input type="text" id="hwSubject" required placeholder="Ex: Français" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Pour le *</label>
+                        <input type="date" id="hwDate" required class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Type</label>
+                        <select id="hwType" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                            <option value="Exercice">Exercice</option>
+                            <option value="Leçon à apprendre">Leçon à apprendre</option>
+                            <option value="Évaluation / Contrôle">Évaluation / Contrôle</option>
+                            <option value="Devoir Maison (DM)">Devoir Maison (DM)</option>
+                            <option value="Lecture">Lecture</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Classe</label>
+                        <input type="text" id="hwClass" value="6e A" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Consigne / Description *</label>
+                    <textarea id="hwDesc" rows="3" required placeholder="Ex: Faire les exercices 4 et 5 page 42..." class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('homeworkModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 4 : ABSENCE PROFESSEUR                             -->
+    <!-- ========================================================= -->
+    <div id="absenceModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Déclarer une absence professeur</h3>
+                <button type="button" onclick="closeModal('absenceModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="absenceForm" class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Professeur *</label>
+                        <input type="text" id="absProf" required placeholder="Ex: M. Dupont" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Matière *</label>
+                        <input type="text" id="absSubject" required placeholder="Ex: Histoire-Géo" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Motif *</label>
+                        <select id="absReason" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                            <option value="Arrêt maladie">Arrêt maladie</option>
+                            <option value="Formation académique">Formation académique</option>
+                            <option value="Sortie / Voyage scolaire">Sortie / Voyage scolaire</option>
+                            <option value="Convocation jury / examen">Convocation jury / examen</option>
+                            <option value="Autorisation d'absence">Autorisation d'absence</option>
+                            <option value="Non précisé">Non précisé</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Date / Période *</label>
+                        <input type="text" id="absDate" required placeholder="Ex: Lundi 16 nov. (8h-12h)" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Remplacement / Consigne vie scolaire</label>
+                    <input type="text" id="absReplacement" placeholder="Ex: Remplacé par Mme Leroy / Permanence" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('absenceModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 5 : AJOUTER UNE OBSERVATION                        -->
+    <!-- ========================================================= -->
+    <div id="obsModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Ajouter une Observation</h3>
+                <button type="button" onclick="closeModal('obsModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="obsForm" class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Nom de l'élève *</label>
+                        <input type="text" id="obsStudent" required placeholder="Ex: Lucas Bernard" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Classe</label>
+                        <input type="text" id="obsClass" value="6e A" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Type d'observation *</label>
+                        <select id="obsType" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                            <option value="Bavardage">Bavardage</option>
+                            <option value="Oubli d'affaires">Oubli d'affaires</option>
+                            <option value="Travail non fait">Travail non fait</option>
+                            <option value="Retard en cours">Retard en cours</option>
+                            <option value="Comportement inapproprié">Comportement inapproprié</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Matière / Professeur</label>
+                        <input type="text" id="obsSubject" placeholder="Ex: Maths (M. Roux)" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Commentaire</label>
+                    <textarea id="obsComment" rows="2" placeholder="Détails éventuels..." class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('obsModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 6 : AJOUTER UNE PUNITION                           -->
+    <!-- ========================================================= -->
+    <div id="punishModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Ajouter une Punition</h3>
+                <button type="button" onclick="closeModal('punishModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="punishForm" class="p-5 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Nom de l'élève *</label>
+                        <input type="text" id="punishStudent" required placeholder="Ex: Emma Petit" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Classe</label>
+                        <input type="text" id="punishClass" value="6e A" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Type de punition *</label>
+                        <select id="punishType" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                            <option value="Heure de retenue">Heure de retenue</option>
+                            <option value="Rattrapage">Rattrapage</option>
+                            <option value="Convocation">Convocation</option>
+                            <option value="Devoir supplémentaire">Devoir supplémentaire</option>
+                            <option value="Exclusion ponctuelle">Exclusion ponctuelle</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Date / Créneau prévu</label>
+                        <input type="text" id="punishDate" placeholder="Ex: Mercredi 13h-14h" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Motif *</label>
+                    <textarea id="punishReason" rows="2" required placeholder="Ex: Accumulation de 3 observations pour bavardages..." class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('punishModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-semibold">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 7 : AJOUTER UNE NOTE                               -->
+    <!-- ========================================================= -->
+    <div id="gradeModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white">Ajouter une note</h3>
+                <button type="button" onclick="closeModal('gradeModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="gradeForm" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Nom de l'évaluation *</label>
+                    <input type="text" id="gradeEvalName" required placeholder="Ex: Contrôle Chapitre 3 - Fractions" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Nom de l'élève *</label>
+                        <input type="text" id="gradeStudent" required placeholder="Ex: Chloé Moreau" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Matière</label>
+                        <input type="text" id="gradeSubject" placeholder="Ex: Mathématiques" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Note obtenue *</label>
+                        <input type="number" step="0.25" min="0" max="20" id="gradeScore" required placeholder="Ex: 16.5" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold mb-1">Barème total *</label>
+                        <select id="gradeMax" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm">
+                            <option value="20">/ 20</option>
+                            <option value="10">/ 10</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold mb-1">Commentaire / Appréciation</label>
+                    <textarea id="gradeComment" rows="2" placeholder="Ex: Très bon travail, raisonnement clair." class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeModal('gradeModal')" class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">Annuler</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold">Enregistrer la note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 8 : SAUVEGARDER L'EMPLOI DU TEMPS                  -->
+    <!-- ========================================================= -->
+    <div id="saveTimetableModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk text-emerald-500"></i>
+                    Sauvegarder l'emploi du temps
+                </h3>
+                <button type="button" onclick="closeModal('saveTimetableModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="saveTimetableForm" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Nom de l'emploi du temps *</label>
+                    <input type="text" id="saveTtName" required placeholder="Ex: Semaine A - 6e A, Trimestre 2..." class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Période / Semaine</label>
+                        <select id="saveTtPeriod" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="Toutes semaines">Toutes semaines</option>
+                            <option value="Semaine A (Q1)">Semaine A (Q1)</option>
+                            <option value="Semaine B (Q2)">Semaine B (Q2)</option>
+                            <option value="Trimestre 1">Trimestre 1</option>
+                            <option value="Trimestre 2">Trimestre 2</option>
+                            <option value="Trimestre 3">Trimestre 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Portée de sauvegarde</label>
+                        <select id="saveTtScope" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="current">Classe actuelle uniquement</option>
+                            <option value="all">Toutes les classes</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Description / Note (optionnel)</label>
+                    <input type="text" id="saveTtNote" placeholder="Ex: Version validée avant conseil de classe" class="w-full rounded-xl bg-slate-50 dark:bg-[#1e293b] border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" id="exportJsonBtn" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-file-arrow-down text-sky-500"></i>
+                        <span>Télécharger fichier (.json)</span>
+                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeModal('saveTimetableModal')" class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm">Annuler</button>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md">Sauvegarder</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- MODALE 9 : MES EMPLOIS DU TEMPS SAUVEGARDÉS               -->
+    <!-- ========================================================= -->
+    <div id="savedTimetablesModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-folder-open text-amber-500"></i>
+                    Mes emplois du temps sauvegardés
+                </h3>
+                <div class="flex items-center gap-2">
+                    <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-sky-600/15 hover:bg-sky-600/25 text-sky-600 dark:text-sky-400 text-xs font-semibold flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-file-arrow-up"></i>
+                        <span>Importer (.json)</span>
+                        <input type="file" id="importJsonInput" accept=".json" class="hidden">
+                    </label>
+                    <button type="button" onclick="closeModal('savedTimetablesModal')" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+            </div>
+            <div id="savedTimetablesList" class="p-5 space-y-3 overflow-y-auto flex-1"></div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICATION -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2.5">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastText">Action enregistrée</span>
+    </div>
+
+    <script>
+        // =========================================================
+        // CONSTANTES & ÉTAT GLOBAL
+        // =========================================================
+        const START_HOUR = 8;
+        const END_HOUR = 18;
+        const PIXELS_PER_HOUR = 72;
+
+        const STORAGE_KEYS = {
+            timetable: 'mbn_timetable_v1',
+            savedTimetables: 'mbn_saved_timetables_v1',
+            homework: 'mbn_homework_v1',
+            absences: 'mbn_absences_v1',
+            observations: 'mbn_observations_v1',
+            punishments: 'mbn_punishments_v1',
+            grades: 'mbn_grades_v1',
+            theme: 'mbn_theme_v1'
+        };
+// ... existing code ... -->
+        let currentClass = '6e A';
+        let timetableData = {};
+        let savedTimetables = [];
+        let homeworkData = [];
+        let homeworkFilter = 'all';
+        let absencesData = [];
+        let observationsData = [];
+        let punishmentsData = [];
+        let gradesData = [];
+        let draggedCourseId = null;
+
+        const COLOR_MAP = {
+            cyan: { bg: '#0891b2', text: '#ffffff' },
+            blue: { bg: '#2563eb', text: '#ffffff' },
+            emerald: { bg: '#059669', text: '#ffffff' },
+            amber: { bg: '#d97706', text: '#ffffff' },
+            purple: { bg: '#7c3aed', text: '#ffffff' },
+            rose: { bg: '#e11d48', text: '#ffffff' }
+        };
+
+        // =========================================================
+        // UTILITAIRES GÉNÉRAUX, MODALES, NAVIGATION & STOCKAGE
+        // =========================================================
+        function loadStorage(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                return raw ? JSON.parse(raw) : fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        function saveStorage(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (e) {
+                console.error('Erreur sauvegarde locale :', e);
+            }
+        }
+
+        function formatHour(val) {
+            const h = Math.floor(val);
+            const m = Math.round((val - h) * 60);
+            return `${h}h${m === 0 ? '00' : String(m).padStart(2, '0')}`;
+        }
+
+        function formatRoom(building, roomNumber) {
+            const num = (roomNumber || '').trim();
+            if (!num && (!building || building === 'AUTRE')) return '';
+            if (building === 'AUTRE') return num;
+            return num ? `Salle ${building}${num}` : `Bât. ${building}`;
+        }
+
+        function getContrastText(hex) {
+            if (!hex || !hex.startsWith('#')) return '#ffffff';
+            const clean = hex.replace('#', '');
+            const r = parseInt(clean.substring(0, 2), 16);
+            const g = parseInt(clean.substring(2, 4), 16);
+            const b = parseInt(clean.substring(4, 6), 16);
+            const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+            return yiq >= 155 ? '#0f172a' : '#ffffff';
+        }
+
+        function toggleCustomColor(prefix) {
+            const select = document.getElementById(`${prefix}Color`);
+            const wrapper = document.getElementById(`${prefix}CustomColorWrapper`);
+            if (select && wrapper) {
+                wrapper.classList.toggle('hidden', select.value !== 'custom');
+            }
+        }
+
+        function syncHexLabel(prefix) {
+            const input = document.getElementById(`${prefix}CustomColor`);
+            const label = document.getElementById(`${prefix}CustomHex`);
+            if (input && label) {
+                label.textContent = input.value.toUpperCase();
+            }
+        }
+
+        function openModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        }
+
+        let toastTimer = null;
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastText');
+            if (!toast || !icon || !text) return;
+
+            text.textContent = message;
+            icon.className = isError
+                ? 'fa-solid fa-circle-exclamation text-rose-400'
+                : 'fa-solid fa-circle-check text-emerald-400';
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 2800);
+        }
+
+        function switchView(viewName) {
+            const views = ['timetable', 'homework', 'absences', 'viescolaire', 'grades'];
+            views.forEach(v => {
+                const section = document.getElementById(`view-${v}`);
+                const btn = document.getElementById(`nav-${v}`);
+                if (section) section.classList.toggle('hidden', v !== viewName);
+                if (btn) {
+                    if (v === viewName) {
+                        btn.className = 'nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition whitespace-nowrap bg-blue-600 text-white shadow-sm';
+                    } else {
+                        btn.className = 'nav-btn flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition whitespace-nowrap text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70';
+                    }
+                }
+            });
+        }
+
+        function updateBadges() {
+            const todoHw = homeworkData.filter(h => !h.done).length;
+            document.getElementById('badge-homework').textContent = todoHw;
+            document.getElementById('badge-absences').textContent = absencesData.length;
+            document.getElementById('badge-viescolaire').textContent = observationsData.length + punishmentsData.length;
+            document.getElementById('badge-grades').textContent = gradesData.length;
+            const savedCountEl = document.getElementById('savedTimetablesCount');
+            if (savedCountEl) savedCountEl.textContent = savedTimetables.length;
+        }
+
+        // =========================================================
+        // SAUVEGARDE & CHARGEMENT D'EMPLOIS DU TEMPS NOMMÉS
+        // =========================================================
+        function renderSavedTimetables() {
+            const container = document.getElementById('savedTimetablesList');
+            if (!container) return;
+
+            if (savedTimetables.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 text-sm text-slate-500 dark:text-slate-400">
+                        <i class="fa-regular fa-folder-open text-3xl mb-2 opacity-50 block"></i>
+                        Aucun emploi du temps sauvegardé pour le moment.<br>
+                        Cliquez sur <strong class="text-emerald-500">Sauvegarder l'emploi du temps</strong> pour conserver votre grille.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = savedTimetables.map(item => {
+                const scopeLabel = item.scope === 'all'
+                    ? 'Toutes les classes'
+                    : `Classe ${item.targetClass}`;
+                const totalCourses = item.scope === 'all'
+                    ? Object.values(item.data || {}).reduce((acc, arr) => acc + (Array.isArray(arr) ? arr.length : 0), 0)
+                    : (Array.isArray(item.data) ? item.data.length : 0);
+
+                return `
+                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-bold text-sm text-slate-900 dark:text-white truncate">${item.name}</span>
+                                <span class="px-2 py-0.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 text-[11px] font-bold">${scopeLabel}</span>
+                                <span class="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-300 text-[11px] font-semibold">${item.period || 'Toutes semaines'}</span>
+                            </div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                ${totalCourses} cours • Sauvegardé le ${item.savedAt}
+                            </div>
+                            ${item.note ? `<div class="text-xs text-slate-600 dark:text-slate-300 mt-1 italic">"${item.note}"</div>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="loadSavedTimetable('${item.id}')" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                                <i class="fa-solid fa-rotate-right"></i>
+                                <span>Charger</span>
+                            </button>
+                            <button onclick="overwriteSavedTimetable('${item.id}')" title="Mettre à jour avec la grille actuelle" class="p-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-600 hover:text-white text-xs transition">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                            </button>
+                            <button onclick="deleteSavedTimetable('${item.id}')" title="Supprimer cette sauvegarde" class="p-2 rounded-xl bg-rose-600/15 hover:bg-rose-600 text-rose-600 hover:text-white text-xs transition">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function loadSavedTimetable(id) {
+            const item = savedTimetables.find(s => s.id === id);
+            if (!item) return;
+
+            if (item.scope === 'all') {
+                timetableData = JSON.parse(JSON.stringify(item.data || {}));
+            } else {
+                const target = item.targetClass || currentClass;
+                currentClass = target;
+                document.getElementById('classSelect').value = target;
+                timetableData[target] = JSON.parse(JSON.stringify(item.data || []));
+            }
+
+            saveStorage(STORAGE_KEYS.timetable, timetableData);
+            renderTimetable();
+            closeModal('savedTimetablesModal');
+            showToast(`Emploi du temps "${item.name}" chargé`);
+        }
+
+        function overwriteSavedTimetable(id) {
+            const item = savedTimetables.find(s => s.id === id);
+            if (!item) return;
+
+            item.data = item.scope === 'all'
+                ? JSON.parse(JSON.stringify(timetableData))
+                : JSON.parse(JSON.stringify(timetableData[item.targetClass || currentClass] || []));
+            item.savedAt = new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            saveStorage(STORAGE_KEYS.savedTimetables, savedTimetables);
+            renderSavedTimetables();
+            showToast(`Sauvegarde "${item.name}" mise à jour`);
+        }
+
+        function deleteSavedTimetable(id) {
+            savedTimetables = savedTimetables.filter(s => s.id !== id);
+            saveStorage(STORAGE_KEYS.savedTimetables, savedTimetables);
+            renderSavedTimetables();
+            updateBadges();
+            showToast('Sauvegarde supprimée');
+        }
+
+        // =========================================================
+        // EMPLOI DU TEMPS : GRILLE, RENDU & DRAG-AND-DROP
+        // =========================================================
+        function renderTimeLabels() {
+            const col = document.getElementById('timeLabelsCol');
+            col.innerHTML = '';
+            for (let h = START_HOUR; h < END_HOUR; h++) {
+                const top = (h - START_HOUR) * PIXELS_PER_HOUR;
+                const label = document.createElement('div');
+                label.style.top = `${top}px`;
+                label.className = 'absolute right-2.5 -translate-y-1/2 text-[11px] font-medium text-slate-500 dark:text-slate-400';
+                if (h === START_HOUR) label.classList.remove('-translate-y-1/2');
+                label.textContent = `${h}h`;
+                col.appendChild(label);
+            }
+        }
+
+        function populateTimeSelects() {
+            const ids = ['createStart', 'createEnd', 'editStart', 'editEnd'];
+            ids.forEach(id => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = '';
+                for (let t = START_HOUR; t <= END_HOUR; t += 0.5) {
+                    const opt = document.createElement('option');
+                    opt.value = t;
+                    opt.textContent = formatHour(t);
+                    sel.appendChild(opt);
+                }
+            });
+        }
+
+        function renderTimetable() {
+            for (let d = 0; d < 5; d++) {
+                document.getElementById(`dayCol-${d}`).innerHTML = '';
+            }
+
+            const courses = timetableData[currentClass] || [];
+            courses.forEach(course => {
+                const dayCol = document.getElementById(`dayCol-${course.day}`);
+                if (!dayCol) return;
+
+                const topPx = (course.start - START_HOUR) * PIXELS_PER_HOUR + 2;
+                const heightPx = Math.max((course.end - course.start) * PIXELS_PER_HOUR - 4, 28);
+
+                let bgColor = COLOR_MAP.cyan.bg;
+                let textColor = COLOR_MAP.cyan.text;
+                if (course.color === 'custom' && course.customHex) {
+                    bgColor = course.customHex;
+                    textColor = getContrastText(bgColor);
+                } else if (COLOR_MAP[course.color]) {
+                    bgColor = COLOR_MAP[course.color].bg;
+                    textColor = COLOR_MAP[course.color].text;
+                }
+
+                const isCancelled = course.status === 'annule';
+                if (isCancelled) {
+                    bgColor = '#334155';
+                    textColor = '#cbd5e1';
+                }
+
+                const block = document.createElement('div');
+                block.draggable = true;
+                block.style.top = `${topPx}px`;
+                block.style.height = `${heightPx}px`;
+                block.style.backgroundColor = bgColor;
+                block.style.color = textColor;
+                block.className = `absolute left-1.5 right-1.5 rounded-xl px-2.5 py-2 shadow-md cursor-pointer select-none overflow-hidden transition-transform hover:scale-[1.01] hover:z-10 flex flex-col justify-between ${isCancelled ? 'opacity-75 ring-2 ring-rose-500' : ''}`;
+
+                // Badge statut
+                let statusBadge = '';
+                if (course.status === 'maintenu') {
+                    statusBadge = `<span class="inline-block px-1.5 py-0.5 rounded bg-emerald-950/70 text-emerald-300 text-[10px] font-bold uppercase tracking-wide">Cours Maintenu</span>`;
+                } else if (course.status === 'exceptionnel') {
+                    statusBadge = `<span class="inline-block px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 text-[10px] font-bold uppercase tracking-wide">Exceptionnel</span>`;
+                } else if (course.status === 'remplacement') {
+                    statusBadge = `<span class="inline-block px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-200 text-[10px] font-bold uppercase tracking-wide">Remplacement</span>`;
+                } else if (course.status === 'annule') {
+                    statusBadge = `<span class="inline-block px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-bold uppercase tracking-wide">Annulé</span>`;
+                }
+
+                const roomStr = formatRoom(course.building, course.roomNumber);
+                const teacherDisplay = course.status === 'remplacement' && course.replacementTeacher
+                    ? `Rempl. ${course.replacementTeacher}`
+                    : (course.teacher || '');
+                const subLine = [teacherDisplay, roomStr].filter(Boolean).join(' • ');
+
+                block.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between gap-1">
+                            <span class="font-bold text-xs sm:text-sm leading-tight ${isCancelled ? 'line-through' : ''}">${course.subject}</span>
+                            ${statusBadge}
+                        </div>
+                        <div class="text-[11px] opacity-90 font-medium mt-0.5">${formatHour(course.start)}–${formatHour(course.end)}</div>
+                        ${subLine ? `<div class="text-[11px] opacity-90 truncate mt-0.5">${subLine}</div>` : ''}
+                    </div>
+                `;
+
+                // Clic pour modifier
+                block.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditCourseModal(course.id);
+                });
+
+                // Drag & drop
+                block.addEventListener('dragstart', (e) => {
+                    draggedCourseId = course.id;
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                dayCol.appendChild(block);
+            });
+        }
+
+        function openCreateCourseModal(defaultDay = 0, defaultStart = 8) {
+            document.getElementById('createCourseForm').reset();
+            document.getElementById('createDay').value = defaultDay;
+            document.getElementById('createStart').value = defaultStart;
+            document.getElementById('createEnd').value = Math.min(defaultStart + 1, END_HOUR);
+            document.getElementById('createCustomColorWrapper').classList.add('hidden');
+            openModal('createModal');
+        }
+
+        function openEditCourseModal(courseId) {
+            const courses = timetableData[currentClass] || [];
+            const course = courses.find(c => c.id === courseId);
+            if (!course) return;
+
+            document.getElementById('editCourseId').value = course.id;
+            document.getElementById('editSubject').value = course.subject;
+            document.getElementById('editTeacher').value = course.teacher || '';
+            document.getElementById('editBuilding').value = course.building || 'A';
+            document.getElementById('editRoomNumber').value = course.roomNumber || '';
+            document.getElementById('editDay').value = course.day;
+            document.getElementById('editStart').value = course.start;
+            document.getElementById('editEnd').value = course.end;
+            document.getElementById('editColor').value = course.color || 'cyan';
+
+            if (course.color === 'custom' && course.customHex) {
+                document.getElementById('editCustomColor').value = course.customHex;
+                document.getElementById('editCustomHex').textContent = course.customHex.toUpperCase();
+                document.getElementById('editCustomColorWrapper').classList.remove('hidden');
+            } else {
+                document.getElementById('editCustomColorWrapper').classList.add('hidden');
+            }
+
+            const statusVal = course.status || 'normal';
+            const radio = document.querySelector(`input[name="editStatus"][value="${statusVal}"]`);
+            if (radio) radio.checked = true;
+
+            document.getElementById('editReplacementTeacher').value = course.replacementTeacher || '';
+            document.getElementById('replacementTeacherWrapper').classList.toggle('hidden', statusVal !== 'remplacement');
+
+            openModal('editModal');
+        }
+
+        // =========================================================
+        // RENDU DES AUTRES ONGLETS (DEVOIRS, ABSENCES, VIE SCOLAIRE, NOTES)
+        // =========================================================
+        function setHomeworkFilter(filter) {
+            homeworkFilter = filter;
+            ['all', 'todo', 'done'].forEach(f => {
+                const btn = document.getElementById(`hw-filter-${f}`);
+                btn.className = f === filter
+                    ? 'hw-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-sky-600 text-white'
+                    : 'hw-filter-btn px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700';
+            });
+            renderHomework();
+        }
+
+        function renderHomework() {
+            const container = document.getElementById('homeworkList');
+            const filtered = homeworkData.filter(h => {
+                if (homeworkFilter === 'todo') return !h.done;
+                if (homeworkFilter === 'done') return h.done;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800">Aucun devoir enregistré dans cette catégorie.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(hw => `
+                <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3 ${hw.done ? 'opacity-65' : ''}">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400 text-xs font-bold">${hw.subject}</span>
+                            <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Pour le ${hw.date}</span>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">${hw.type} • ${hw.className}</div>
+                        <p class="text-sm text-slate-800 dark:text-slate-200 ${hw.done ? 'line-through' : ''}">${hw.desc}</p>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button onclick="toggleHomeworkDone('${hw.id}')" class="text-xs font-semibold flex items-center gap-1.5 ${hw.done ? 'text-emerald-500' : 'text-slate-500 hover:text-sky-500'}">
+                            <i class="fa-solid ${hw.done ? 'fa-square-check' : 'fa-square'}"></i>
+                            <span>${hw.done ? 'Fait' : 'Marquer comme fait'}</span>
+                        </button>
+                        <button onclick="deleteHomework('${hw.id}')" class="text-xs text-rose-500 hover:text-rose-400"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleHomeworkDone(id) {
+            const item = homeworkData.find(h => h.id === id);
+            if (item) {
+                item.done = !item.done;
+                saveStorage(STORAGE_KEYS.homework, homeworkData);
+                renderHomework();
+                updateBadges();
+            }
+        }
+
+        function deleteHomework(id) {
+            homeworkData = homeworkData.filter(h => h.id !== id);
+            saveStorage(STORAGE_KEYS.homework, homeworkData);
+            renderHomework();
+            updateBadges();
+            showToast('Devoir supprimé');
+        }
+
+        function renderAbsences() {
+            const container = document.getElementById('absencesList');
+            if (absencesData.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800">Aucune absence professeur déclarée.</div>`;
+                return;
+            }
+            container.innerHTML = absencesData.map(abs => `
+                <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <span class="font-bold text-sm text-slate-900 dark:text-white">${abs.prof}</span>
+                            <span class="px-2.5 py-0.5 rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 text-xs font-bold">${abs.reason}</span>
+                        </div>
+                        <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">${abs.subject} • ${abs.date}</div>
+                        ${abs.replacement ? `<div class="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-2"><i class="fa-solid fa-arrow-right mr-1"></i>${abs.replacement}</div>` : ''}
+                    </div>
+                    <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button onclick="deleteAbsence('${abs.id}')" class="text-xs text-rose-500 hover:underline">Supprimer</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteAbsence(id) {
+            absencesData = absencesData.filter(a => a.id !== id);
+            saveStorage(STORAGE_KEYS.absences, absencesData);
+            renderAbsences();
+            updateBadges();
+            showToast('Absence supprimée');
+        }
+
+        function renderVieScolaire() {
+            document.getElementById('obsCountLabel').textContent = observationsData.length;
+            document.getElementById('punishCountLabel').textContent = punishmentsData.length;
+
+            const obsContainer = document.getElementById('observationsList');
+            obsContainer.innerHTML = observationsData.length === 0
+                ? `<p class="text-xs text-slate-500 py-4 text-center">Aucune observation enregistrée.</p>`
+                : observationsData.map(o => `
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-start justify-between gap-3">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-bold text-sm">${o.student}</span>
+                                <span class="text-[11px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-semibold">${o.className}</span>
+                                <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold">${o.type}</span>
+                            </div>
+                            ${o.subject ? `<div class="text-xs text-slate-500 mt-1">${o.subject}</div>` : ''}
+                            ${o.comment ? `<p class="text-xs text-slate-600 dark:text-slate-300 mt-1">${o.comment}</p>` : ''}
+                        </div>
+                        <button onclick="deleteObservation('${o.id}')" class="text-slate-400 hover:text-rose-500 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `).join('');
+
+            const punishContainer = document.getElementById('punishmentsList');
+            punishContainer.innerHTML = punishmentsData.length === 0
+                ? `<p class="text-xs text-slate-500 py-4 text-center">Aucune punition enregistrée.</p>`
+                : punishmentsData.map(p => `
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-start justify-between gap-3">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-bold text-sm">${p.student}</span>
+                                <span class="text-[11px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-semibold">${p.className}</span>
+                                <span class="text-[11px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-600 dark:text-rose-300 font-bold">${p.type}</span>
+                            </div>
+                            ${p.date ? `<div class="text-xs text-slate-500 mt-1"><i class="fa-regular fa-clock mr-1"></i>${p.date}</div>` : ''}
+                            <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">${p.reason}</p>
+                        </div>
+                        <button onclick="deletePunishment('${p.id}')" class="text-slate-400 hover:text-rose-500 text-xs"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `).join('');
+        }
+
+        function deleteObservation(id) {
+            observationsData = observationsData.filter(o => o.id !== id);
+            saveStorage(STORAGE_KEYS.observations, observationsData);
+            renderVieScolaire();
+            updateBadges();
+            showToast('Observation supprimée');
+        }
+
+        function deletePunishment(id) {
+            punishmentsData = punishmentsData.filter(p => p.id !== id);
+            saveStorage(STORAGE_KEYS.punishments, punishmentsData);
+            renderVieScolaire();
+            updateBadges();
+            showToast('Punition supprimée');
+        }
+
+        function renderGrades() {
+            const container = document.getElementById('gradesList');
+            const avgLabel = document.getElementById('gradesAverageLabel');
+
+            if (gradesData.length === 0) {
+                avgLabel.textContent = '— / 20';
+                container.innerHTML = `<div class="col-span-full text-center py-12 text-sm text-slate-500 dark:text-slate-400 bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800">Aucune note enregistrée.</div>`;
+                return;
+            }
+
+            let sumOn20 = 0;
+            gradesData.forEach(g => {
+                sumOn20 += (Number(g.score) / Number(g.max)) * 20;
+            });
+            avgLabel.textContent = `${(sumOn20 / gradesData.length).toFixed(2)} / 20`;
+
+            container.innerHTML = gradesData.map(g => `
+                <div class="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3">
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-1.5">
+                            <span class="font-bold text-sm text-slate-900 dark:text-white">${g.evalName}</span>
+                            <span class="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-sm font-extrabold shrink-0">${g.score} / ${g.max}</span>
+                        </div>
+                        <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">${g.student}${g.subject ? ` • ${g.subject}` : ''}</div>
+                        ${g.comment ? `<p class="text-xs text-slate-500 dark:text-slate-400 mt-2 italic">"${g.comment}"</p>` : ''}
+                    </div>
+                    <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button onclick="deleteGrade('${g.id}')" class="text-xs text-rose-500 hover:underline">Supprimer</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteGrade(id) {
+            gradesData = gradesData.filter(g => g.id !== id);
+            saveStorage(STORAGE_KEYS.grades, gradesData);
+            renderGrades();
+            updateBadges();
+            showToast('Note supprimée');
+        }
+
+        // =========================================================
+        // ÉCOUTEURS D'ÉVÉNEMENTS & INITIALISATION
+        // =========================================================
+        function initEventListeners() {
+            // Thème clair / sombre
+            document.getElementById('themeToggleBtn').addEventListener('click', () => {
+                const html = document.documentElement;
+                const isDark = html.classList.toggle('dark');
+                document.getElementById('themeIcon').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+                saveStorage(STORAGE_KEYS.theme, isDark ? 'dark' : 'light');
+            });
+
+            // Changement de classe
+            document.getElementById('classSelect').addEventListener('change', (e) => {
+                currentClass = e.target.value;
+                renderTimetable();
+            });
+
+            // Boutons d'ouverture des modales
+            document.getElementById('openCreateModalBtn').addEventListener('click', () => openCreateCourseModal(0, 8));
+            document.getElementById('clearAllBtn').addEventListener('click', () => {
+                if (!timetableData[currentClass] || timetableData[currentClass].length === 0) {
+                    showToast('La grille est déjà vide');
+                    return;
+                }
+                timetableData[currentClass] = [];
+                saveStorage(STORAGE_KEYS.timetable, timetableData);
+                renderTimetable();
+                showToast(`Emploi du temps de ${currentClass} vidé`);
+            });
+            document.getElementById('openSaveTimetableModalBtn').addEventListener('click', () => {
+                document.getElementById('saveTimetableForm').reset();
+                document.getElementById('saveTtName').value = `Emploi du temps ${currentClass}`;
+                openModal('saveTimetableModal');
+            });
+            document.getElementById('openSavedTimetablesBtn').addEventListener('click', () => {
+                renderSavedTimetables();
+                openModal('savedTimetablesModal');
+            });
+            document.getElementById('openHomeworkModalBtn').addEventListener('click', () => openModal('homeworkModal'));
+            document.getElementById('openAbsenceModalBtn').addEventListener('click', () => openModal('absenceModal'));
+            document.getElementById('openObsModalBtn').addEventListener('click', () => openModal('obsModal'));
+            document.getElementById('openPunishModalBtn').addEventListener('click', () => openModal('punishModal'));
+            document.getElementById('openGradeModalBtn').addEventListener('click', () => openModal('gradeModal'));
+
+            // Formulaire Sauvegarder l'emploi du temps
+            document.getElementById('saveTimetableForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('saveTtName').value.trim();
+                const period = document.getElementById('saveTtPeriod').value;
+                const scope = document.getElementById('saveTtScope').value;
+                const note = document.getElementById('saveTtNote').value.trim();
+
+                const snapshotData = scope === 'all'
+                    ? JSON.parse(JSON.stringify(timetableData))
+                    : JSON.parse(JSON.stringify(timetableData[currentClass] || []));
+
+                savedTimetables.unshift({
+                    id: 'tt_' + Date.now(),
+                    name,
+                    period,
+                    scope,
+                    targetClass: currentClass,
+                    note,
+                    savedAt: new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    data: snapshotData
+                });
+
+                saveStorage(STORAGE_KEYS.savedTimetables, savedTimetables);
+                updateBadges();
+                closeModal('saveTimetableModal');
+                showToast(`"${name}" sauvegardé`);
+            });
+
+            // Exporter un fichier JSON de secours
+            document.getElementById('exportJsonBtn').addEventListener('click', () => {
+                const rawName = (document.getElementById('saveTtName').value.trim() || `emploi_du_temps_${currentClass}`)
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_-]+/g, '_');
+                const payload = {
+                    app: 'Mon Bureau Numérique - Emploi du temps',
+                    exportedAt: new Date().toISOString(),
+                    currentClass,
+                    timetableData
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${rawName}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Fichier .json téléchargé');
+            });
+
+            // Importer un fichier JSON
+            document.getElementById('importJsonInput').addEventListener('change', (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const parsed = JSON.parse(evt.target.result);
+                        if (parsed && parsed.timetableData && typeof parsed.timetableData === 'object') {
+                            timetableData = parsed.timetableData;
+                            if (parsed.currentClass) {
+                                currentClass = parsed.currentClass;
+                                document.getElementById('classSelect').value = currentClass;
+                            }
+                            saveStorage(STORAGE_KEYS.timetable, timetableData);
+                            renderTimetable();
+                            closeModal('savedTimetablesModal');
+                            showToast('Emploi du temps importé avec succès');
+                        } else {
+                            showToast('Format de fichier invalide', true);
+                        }
+                    } catch (err) {
+                        showToast('Impossible de lire ce fichier JSON', true);
+                    }
+                    e.target.value = '';
+                };
+                reader.readAsText(file);
+            });
+
+            // Clic sur case vide & Drag & Drop sur colonnes de jours
+            for (let d = 0; d < 5; d++) {
+                const col = document.getElementById(`dayCol-${d}`);
+                col.addEventListener('click', (e) => {
+                    if (e.target !== col) return;
+                    const rect = col.getBoundingClientRect();
+                    const offsetY = e.clientY - rect.top;
+                    const clickedHour = START_HOUR + Math.floor((offsetY / PIXELS_PER_HOUR) * 2) / 2;
+                    openCreateCourseModal(d, Math.min(Math.max(clickedHour, START_HOUR), END_HOUR - 0.5));
+                });
+
+                col.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                });
+
+                col.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (!draggedCourseId) return;
+                    const courses = timetableData[currentClass] || [];
+                    const course = courses.find(c => c.id === draggedCourseId);
+                    if (!course) return;
+
+                    const rect = col.getBoundingClientRect();
+                    const offsetY = e.clientY - rect.top;
+                    const duration = course.end - course.start;
+                    let newStart = START_HOUR + Math.round((offsetY / PIXELS_PER_HOUR) * 2) / 2;
+                    newStart = Math.max(START_HOUR, Math.min(newStart, END_HOUR - duration));
+
+                    course.day = d;
+                    course.start = newStart;
+                    course.end = newStart + duration;
+                    draggedCourseId = null;
+
+                    saveStorage(STORAGE_KEYS.timetable, timetableData);
+                    renderTimetable();
+                    showToast('Cours déplacé');
+                });
+            }
+
+            // Formulaire Création de cours
+            document.getElementById('createCourseForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const start = parseFloat(document.getElementById('createStart').value);
+                const end = parseFloat(document.getElementById('createEnd').value);
+                if (end <= start) {
+                    showToast("L'heure de fin doit être après l'heure de début", true);
+                    return;
+                }
+
+                const color = document.getElementById('createColor').value;
+                const newCourse = {
+                    id: 'c_' + Date.now(),
+                    subject: document.getElementById('createSubject').value.trim(),
+                    teacher: document.getElementById('createTeacher').value.trim(),
+                    building: document.getElementById('createBuilding').value,
+                    roomNumber: document.getElementById('createRoomNumber').value.trim(),
+                    day: parseInt(document.getElementById('createDay').value, 10),
+                    start,
+                    end,
+                    color,
+                    customHex: color === 'custom' ? document.getElementById('createCustomColor').value : null,
+                    status: 'normal',
+                    replacementTeacher: ''
+                };
+
+                if (!timetableData[currentClass]) timetableData[currentClass] = [];
+                timetableData[currentClass].push(newCourse);
+                saveStorage(STORAGE_KEYS.timetable, timetableData);
+                renderTimetable();
+                closeModal('createModal');
+                showToast('Cours ajouté');
+            });
+
+            // Affichage champ remplaçant dans modale édition
+            document.querySelectorAll('input[name="editStatus"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    document.getElementById('replacementTeacherWrapper').classList.toggle('hidden', e.target.value !== 'remplacement');
+                });
+            });
+
+            // Formulaire Modification de cours
+            document.getElementById('editCourseForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('editCourseId').value;
+                const start = parseFloat(document.getElementById('editStart').value);
+                const end = parseFloat(document.getElementById('editEnd').value);
+                if (end <= start) {
+                    showToast("L'heure de fin doit être après l'heure de début", true);
+                    return;
+                }
+
+                const courses = timetableData[currentClass] || [];
+                const course = courses.find(c => c.id === id);
+                if (!course) return;
+
+                const status = document.querySelector('input[name="editStatus"]:checked')?.value || 'normal';
+                const color = document.getElementById('editColor').value;
+
+                course.subject = document.getElementById('editSubject').value.trim();
+                course.teacher = document.getElementById('editTeacher').value.trim();
+                course.building = document.getElementById('editBuilding').value;
+                course.roomNumber = document.getElementById('editRoomNumber').value.trim();
+                course.day = parseInt(document.getElementById('editDay').value, 10);
+                course.start = start;
+                course.end = end;
+                course.color = color;
+                course.customHex = color === 'custom' ? document.getElementById('editCustomColor').value : null;
+                course.status = status;
+                course.replacementTeacher = status === 'remplacement' ? document.getElementById('editReplacementTeacher').value.trim() : '';
+
+                saveStorage(STORAGE_KEYS.timetable, timetableData);
+                renderTimetable();
+                closeModal('editModal');
+                showToast('Cours modifié');
+            });
+
+            // Supprimer un cours
+            document.getElementById('deleteCourseBtn').addEventListener('click', () => {
+                const id = document.getElementById('editCourseId').value;
+                timetableData[currentClass] = (timetableData[currentClass] || []).filter(c => c.id !== id);
+                saveStorage(STORAGE_KEYS.timetable, timetableData);
+                renderTimetable();
+                closeModal('editModal');
+                showToast('Cours supprimé');
+            });
+
+            // Formulaire Devoir
+            document.getElementById('homeworkForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                homeworkData.unshift({
+                    id: 'hw_' + Date.now(),
+                    subject: document.getElementById('hwSubject').value.trim(),
+                    date: document.getElementById('hwDate').value,
+                    type: document.getElementById('hwType').value,
+                    className: document.getElementById('hwClass').value.trim(),
+                    desc: document.getElementById('hwDesc').value.trim(),
+                    done: false
+                });
+                saveStorage(STORAGE_KEYS.homework, homeworkData);
+                renderHomework();
+                updateBadges();
+                e.target.reset();
+                closeModal('homeworkModal');
+                showToast('Devoir ajouté');
+            });
+
+            // Formulaire Absence Professeur
+            document.getElementById('absenceForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                absencesData.unshift({
+                    id: 'abs_' + Date.now(),
+                    prof: document.getElementById('absProf').value.trim(),
+                    subject: document.getElementById('absSubject').value.trim(),
+                    reason: document.getElementById('absReason').value,
+                    date: document.getElementById('absDate').value.trim(),
+                    replacement: document.getElementById('absReplacement').value.trim()
+                });
+                saveStorage(STORAGE_KEYS.absences, absencesData);
+                renderAbsences();
+                updateBadges();
+                e.target.reset();
+                closeModal('absenceModal');
+                showToast('Absence enregistrée');
+            });
+
+            // Formulaire Observation
+            document.getElementById('obsForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                observationsData.unshift({
+                    id: 'obs_' + Date.now(),
+                    student: document.getElementById('obsStudent').value.trim(),
+                    className: document.getElementById('obsClass').value.trim(),
+                    type: document.getElementById('obsType').value,
+                    subject: document.getElementById('obsSubject').value.trim(),
+                    comment: document.getElementById('obsComment').value.trim()
+                });
+                saveStorage(STORAGE_KEYS.observations, observationsData);
+                renderVieScolaire();
+                updateBadges();
+                e.target.reset();
+                closeModal('obsModal');
+                showToast('Observation ajoutée');
+            });
+
+            // Formulaire Punition
+            document.getElementById('punishForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                punishmentsData.unshift({
+                    id: 'pun_' + Date.now(),
+                    student: document.getElementById('punishStudent').value.trim(),
+                    className: document.getElementById('punishClass').value.trim(),
+                    type: document.getElementById('punishType').value,
+                    date: document.getElementById('punishDate').value.trim(),
+                    reason: document.getElementById('punishReason').value.trim()
+                });
+                saveStorage(STORAGE_KEYS.punishments, punishmentsData);
+                renderVieScolaire();
+                updateBadges();
+                e.target.reset();
+                closeModal('punishModal');
+                showToast('Punition ajoutée');
+            });
+
+            // Formulaire Note
+            document.getElementById('gradeForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const score = parseFloat(document.getElementById('gradeScore').value);
+                const max = parseFloat(document.getElementById('gradeMax').value);
+                if (score > max) {
+                    showToast(`La note ne peut pas dépasser /${max}`, true);
+                    return;
+                }
+                gradesData.unshift({
+                    id: 'gr_' + Date.now(),
+                    evalName: document.getElementById('gradeEvalName').value.trim(),
+                    student: document.getElementById('gradeStudent').value.trim(),
+                    subject: document.getElementById('gradeSubject').value.trim(),
+                    score,
+                    max,
+                    comment: document.getElementById('gradeComment').value.trim()
+                });
+                saveStorage(STORAGE_KEYS.grades, gradesData);
+                renderGrades();
+                updateBadges();
+                e.target.reset();
+                closeModal('gradeModal');
+                showToast('Note enregistrée');
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Restaurer le thème
+            const savedTheme = loadStorage(STORAGE_KEYS.theme, 'dark');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('themeIcon').className = 'fa-solid fa-moon';
+            }
+
+            // Charger les données locales
+            timetableData = loadStorage(STORAGE_KEYS.timetable, {});
+            savedTimetables = loadStorage(STORAGE_KEYS.savedTimetables, []);
+            homeworkData = loadStorage(STORAGE_KEYS.homework, []);
+            absencesData = loadStorage(STORAGE_KEYS.absences, []);
+            observationsData = loadStorage(STORAGE_KEYS.observations, []);
+            punishmentsData = loadStorage(STORAGE_KEYS.punishments, []);
+            gradesData = loadStorage(STORAGE_KEYS.grades, []);
+
+            renderTimeLabels();
+            populateTimeSelects();
+            initEventListeners();
+
+            renderTimetable();
+            renderHomework();
+            renderAbsences();
+            renderVieScolaire();
+            renderGrades();
+            updateBadges();
+        });
+    </script>
+</body>
+</html>
